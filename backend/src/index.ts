@@ -8,6 +8,7 @@ import { embedText } from "./embedText";
 import { saveEmbedding } from "./saveEmbedding";
 import { searchChunks } from "./searchChunks";
 import { generateAnswer } from "./generateAnswer";
+import { getRedisClient } from "./redisClient";
 
 const app = express();
 app.use(express.json());
@@ -81,10 +82,22 @@ app.get("/repos/:id/ask", async (req, res) => {
   const question = req.query.q as string;
   if (!question) return res.status(400).json({ error: "missing ?q= param" });
 
+  const cacheKey = `ask:${req.params.id}:${question}`;
+
   try {
+    const redis = await getRedisClient();
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      return res.json({ ...JSON.parse(cached), cached: true });
+    }
+
     const chunks = await searchChunks(req.params.id, question);
     const answer = await generateAnswer(question, chunks);
-    res.json({ answer, sources: chunks.map((c) => c.filePath) });
+    const result = { answer, sources: chunks.map((c) => c.filePath) };
+
+    await redis.set(cacheKey, JSON.stringify(result), { EX: 3600 });
+
+    res.json({ ...result, cached: false });
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
