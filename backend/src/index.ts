@@ -9,6 +9,8 @@ import { saveEmbedding } from "./saveEmbedding";
 import { searchChunks } from "./searchChunks";
 import { generateAnswer } from "./generateAnswer";
 import { getRedisClient } from "./redisClient";
+import { signup, login } from "./auth";
+import { requireAuth, AuthRequest } from "./authMiddleware";
 
 const app = express();
 app.use(express.json());
@@ -19,7 +21,33 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-app.post("/repos", async (req, res) => {
+app.post("/auth/signup", async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ error: "email and password required" });
+  }
+  try {
+    const result = await signup(email, password);
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ error: String(err) });
+  }
+});
+
+app.post("/auth/login", async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ error: "email and password required" });
+  }
+  try {
+    const result = await login(email, password);
+    res.json(result);
+  } catch (err) {
+    res.status(401).json({ error: String(err) });
+  }
+});
+
+app.post("/repos", requireAuth, async (req: AuthRequest, res) => {
   const { name, url } = req.body;
 
   if (!name || !url) {
@@ -29,7 +57,7 @@ app.post("/repos", async (req, res) => {
   try {
     await cloneRepo(url, name);
     const repo = await prisma.repo.create({
-      data: { name, url },
+      data: { name, url, userId: req.userId! },
     });
     res.json(repo);
   } catch (err) {
@@ -37,9 +65,11 @@ app.post("/repos", async (req, res) => {
   }
 });
 
-app.post("/repos/:id/ingest", async (req, res) => {
-  const repo = await prisma.repo.findUnique({ where: { id: req.params.id } });
-  if (!repo) return res.status(404).json({ error: "repo not found" });
+app.post("/repos/:id/ingest", requireAuth, async (req: AuthRequest, res) => {
+  const repo = await prisma.repo.findUnique({ where: { id: (req.params.id as string) } });
+  if (!repo || repo.userId !== req.userId) {
+    return res.status(404).json({ error: "repo not found" });
+  }
 
   try {
     const files = await parseFiles(`./cloned_repos/${repo.name}`);
@@ -66,23 +96,33 @@ app.post("/repos/:id/ingest", async (req, res) => {
   }
 });
 
-app.get("/repos/:id/search", async (req, res) => {
-  const query = req.query.q as string;
+app.get("/repos/:id/search", requireAuth, async (req: AuthRequest, res) => {
+  const repo = await prisma.repo.findUnique({ where: { id: (req.params.id as string) } });
+  if (!repo || repo.userId !== req.userId) {
+    return res.status(404).json({ error: "repo not found" });
+  }
+
+  const query = req.query.q as unknown as string;
   if (!query) return res.status(400).json({ error: "missing ?q= param" });
 
   try {
-    const results = await searchChunks(req.params.id, query);
+    const results = await searchChunks((req.params.id as string), query);
     res.json({ results });
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
 });
 
-app.get("/repos/:id/ask", async (req, res) => {
-  const question = req.query.q as string;
+app.get("/repos/:id/ask", requireAuth, async (req: AuthRequest, res) => {
+  const repo = await prisma.repo.findUnique({ where: { id: (req.params.id as string) } });
+  if (!repo || repo.userId !== req.userId) {
+    return res.status(404).json({ error: "repo not found" });
+  }
+
+  const question = req.query.q as unknown as string;
   if (!question) return res.status(400).json({ error: "missing ?q= param" });
 
-  const cacheKey = `ask:${req.params.id}:${question}`;
+  const cacheKey = `ask:${(req.params.id as string)}:${question}`;
 
   try {
     const redis = await getRedisClient();
@@ -91,7 +131,7 @@ app.get("/repos/:id/ask", async (req, res) => {
       return res.json({ ...JSON.parse(cached), cached: true });
     }
 
-    const chunks = await searchChunks(req.params.id, question);
+    const chunks = await searchChunks((req.params.id as string), question);
     const answer = await generateAnswer(question, chunks);
     const result = { answer, sources: chunks.map((c) => c.filePath) };
 

@@ -19,6 +19,8 @@ model Repo {
   name      String
   url       String
   createdAt DateTime @default(now())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
 }
 
 model Chunk {
@@ -27,4 +29,12 @@ model Chunk {
   filePath  String
   content   String
   createdAt DateTime @default(now())
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  repos     Repo[]
 }
