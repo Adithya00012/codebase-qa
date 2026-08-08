@@ -7,6 +7,11 @@ type Message = {
 };
 
 function App() {
+  const [token, setToken] = useState<string | null>(null);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [authError, setAuthError] = useState("");
+
   const [repoName, setRepoName] = useState("");
   const [repoUrl, setRepoUrl] = useState("");
   const [repoId, setRepoId] = useState<string | null>(null);
@@ -15,12 +20,30 @@ function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [asking, setAsking] = useState(false);
 
+  const handleAuth = async (mode: "signup" | "login") => {
+    setAuthError("");
+    const res = await fetch(`http://localhost:4000/auth/${mode}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+    if (!data.token) {
+      setAuthError(data.error || "Auth failed");
+      return;
+    }
+    setToken(data.token);
+  };
+
   const handleAddRepo = async (e: React.FormEvent) => {
     e.preventDefault();
     setIngesting(true);
     const res = await fetch("http://localhost:4000/repos", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify({ name: repoName, url: repoUrl }),
     });
     const repo = await res.json();
@@ -29,7 +52,10 @@ function App() {
       return;
     }
     setRepoId(repo.id);
-    await fetch(`http://localhost:4000/repos/${repo.id}/ingest`, { method: "POST" });
+    await fetch(`http://localhost:4000/repos/${repo.id}/ingest`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
     setIngesting(false);
   };
 
@@ -43,7 +69,8 @@ function App() {
     setAsking(true);
 
     const res = await fetch(
-      `http://localhost:4000/repos/${repoId}/ask?q=${encodeURIComponent(question)}`
+      `http://localhost:4000/repos/${repoId}/ask?q=${encodeURIComponent(question)}`,
+      { headers: { Authorization: `Bearer ${token}` } }
     );
     const data = await res.json();
     setMessages((prev) => [
@@ -52,6 +79,42 @@ function App() {
     ]);
     setAsking(false);
   };
+
+  if (!token) {
+    return (
+      <div className="max-w-sm mx-auto p-6 mt-20">
+        <h1 className="text-2xl font-bold text-blue-600 mb-4">Codebase Q&A</h1>
+        <input
+          className="border rounded px-3 py-2 w-full mb-2"
+          placeholder="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <input
+          className="border rounded px-3 py-2 w-full mb-2"
+          placeholder="password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        {authError && <p className="text-red-600 text-sm mb-2">{authError}</p>}
+        <div className="flex gap-2">
+          <button
+            className="bg-blue-600 text-white px-4 py-2 rounded flex-1"
+            onClick={() => handleAuth("signup")}
+          >
+            Sign Up
+          </button>
+          <button
+            className="bg-gray-600 text-white px-4 py-2 rounded flex-1"
+            onClick={() => handleAuth("login")}
+          >
+            Log In
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto p-6">
