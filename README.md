@@ -20,11 +20,13 @@ Ask natural language questions about any public GitHub repository and get accura
 - **Cache:** Redis
 - **AI:** LangChain (chunking), transformers.js (local embeddings), Groq API (LLM answering)
 - **Testing:** Jest
+- **Deployment:** Docker, Docker Compose
 
 ## Project Structure
-codebase-qa/
-├── backend/ Express API, ingestion pipeline, RAG logic
-└── frontend/ React chat interface
+
+    codebase-qa/
+    ├── backend/     Express API, ingestion pipeline, RAG logic
+    └── frontend/    React chat interface
 
 ## Running Locally
 
@@ -38,7 +40,7 @@ codebase-qa/
 ```bash
 cd backend
 npm install
-# create .env with DATABASE_URL and GROQ_API_KEY
+# create .env with DATABASE_URL, GROQ_API_KEY, JWT_SECRET
 npx prisma generate
 npm run dev
 ```
@@ -50,7 +52,12 @@ npm install
 npm run dev
 ```
 
-Open the frontend URL, submit a public GitHub repo URL, wait for ingestion, then ask questions about the codebase.
+Open the frontend URL, sign up, submit a public GitHub repo URL, wait for ingestion, then ask questions about the codebase.
+
+### Or run everything with Docker
+```bash
+docker compose up --build
+```
 
 ## Testing
 
@@ -59,11 +66,17 @@ cd backend
 npm test
 ```
 
+## Features
+
+- JWT authentication with per-user multi-repo support
+- Ownership isolation (users can only access their own repos)
+- Redis-cached answers for repeated questions
+- Source-cited answers referencing exact files
+
 ## Roadmap / Future Work
 
-- Authentication + multi-repo support per user
 - Streaming LLM responses
-- Docker deployment
+- Cloud deployment (Vercel + Render)
 - MCP (Model Context Protocol) integration — expose repo Q&A as a tool for other AI agents
 
 ## License
