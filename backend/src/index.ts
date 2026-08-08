@@ -6,6 +6,7 @@ import { parseFiles } from "./parseFiles";
 import { chunkFile } from "./chunkFile";
 import { embedText } from "./embedText";
 import { saveEmbedding } from "./saveEmbedding";
+import { searchChunks } from "./searchChunks";
 
 const app = express();
 app.use(express.json());
@@ -58,6 +59,18 @@ app.post("/repos/:id/ingest", async (req, res) => {
     }
 
     res.json({ filesProcessed: files.length, chunksCreated: totalChunks });
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+app.get("/repos/:id/search", async (req, res) => {
+  const query = req.query.q as string;
+  if (!query) return res.status(400).json({ error: "missing ?q= param" });
+
+  try {
+    const results = await searchChunks(req.params.id, query);
+    res.json({ results });
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
