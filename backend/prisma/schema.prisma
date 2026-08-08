@@ -18,3 +18,11 @@ model Repo {
   url       String
   createdAt DateTime @default(now())
 }
+
+model Chunk {
+  id        String   @id @default(uuid())
+  repoId    String
+  filePath  String
+  content   String
+  createdAt DateTime @default(now())
+}

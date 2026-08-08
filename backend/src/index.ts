@@ -3,6 +3,7 @@ import express from "express";
 import { cloneRepo } from "./cloneRepo";
 import { prisma } from "./prismaClient";
 import { parseFiles } from "./parseFiles";
+import { chunkFile } from "./chunkFile";
 
 const app = express();
 app.use(express.json());
@@ -31,13 +32,28 @@ app.post("/repos", async (req, res) => {
   }
 });
 
-app.get("/repos/:id/files", async (req, res) => {
+app.post("/repos/:id/ingest", async (req, res) => {
   const repo = await prisma.repo.findUnique({ where: { id: req.params.id } });
   if (!repo) return res.status(404).json({ error: "repo not found" });
 
   try {
     const files = await parseFiles(`./cloned_repos/${repo.name}`);
-    res.json({ files: files.map((f) => f.filePath) });
+    let totalChunks = 0;
+
+    for (const file of files) {
+      const ext = file.filePath.split(".").pop();
+      const language = ext === "py" ? "python" : "js";
+      const chunks = await chunkFile(file.content, language);
+
+      for (const chunk of chunks) {
+        await prisma.chunk.create({
+          data: { repoId: repo.id, filePath: file.filePath, content: chunk },
+        });
+        totalChunks++;
+      }
+    }
+
+    res.json({ filesProcessed: files.length, chunksCreated: totalChunks });
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
