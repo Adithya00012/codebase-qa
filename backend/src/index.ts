@@ -7,6 +7,7 @@ import { chunkFile } from "./chunkFile";
 import { embedText } from "./embedText";
 import { saveEmbedding } from "./saveEmbedding";
 import { searchChunks } from "./searchChunks";
+import { generateAnswer } from "./generateAnswer";
 
 const app = express();
 app.use(express.json());
@@ -71,6 +72,19 @@ app.get("/repos/:id/search", async (req, res) => {
   try {
     const results = await searchChunks(req.params.id, query);
     res.json({ results });
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+app.get("/repos/:id/ask", async (req, res) => {
+  const question = req.query.q as string;
+  if (!question) return res.status(400).json({ error: "missing ?q= param" });
+
+  try {
+    const chunks = await searchChunks(req.params.id, question);
+    const answer = await generateAnswer(question, chunks);
+    res.json({ answer, sources: chunks.map((c) => c.filePath) });
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
