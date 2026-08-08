@@ -4,6 +4,8 @@ import { cloneRepo } from "./cloneRepo";
 import { prisma } from "./prismaClient";
 import { parseFiles } from "./parseFiles";
 import { chunkFile } from "./chunkFile";
+import { embedText } from "./embedText";
+import { saveEmbedding } from "./saveEmbedding";
 
 const app = express();
 app.use(express.json());
@@ -46,9 +48,11 @@ app.post("/repos/:id/ingest", async (req, res) => {
       const chunks = await chunkFile(file.content, language);
 
       for (const chunk of chunks) {
-        await prisma.chunk.create({
+        const created = await prisma.chunk.create({
           data: { repoId: repo.id, filePath: file.filePath, content: chunk },
         });
+        const vector = await embedText(chunk);
+        await saveEmbedding(created.id, vector);
         totalChunks++;
       }
     }
