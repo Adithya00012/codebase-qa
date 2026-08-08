@@ -1,8 +1,14 @@
 import simpleGit from "simple-git";
 import path from "path";
+import fs from "fs";
 
 export async function cloneRepo(repoUrl: string, repoName: string) {
   const targetPath = path.join(__dirname, "..", "cloned_repos", repoName);
+
+  if (fs.existsSync(targetPath)) {
+    return targetPath;
+  }
+
   const git = simpleGit();
   await git.clone(repoUrl, targetPath);
   return targetPath;
