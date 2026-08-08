@@ -1,0 +1,32 @@
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: codebase_qa
+      POSTGRES_USER: qauser
+      POSTGRES_PASSWORD: qapassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+  backend:
+    build: ./backend
+    ports:
+      - "4000:4000"
+    environment:
+      DATABASE_URL: postgresql://qauser:qapassword@postgres:5432/codebase_qa
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      - postgres
+      - redis
+
+volumes:
+  pgdata:
