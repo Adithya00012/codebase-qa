@@ -20,6 +20,16 @@ function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [asking, setAsking] = useState(false);
 
+  const handleLogout = () => {
+    setToken(null);
+    setRepoId(null);
+    setMessages([]);
+    setRepoName("");
+    setRepoUrl("");
+    setEmail("");
+    setPassword("");
+  };
+
   const handleAuth = async (mode: "signup" | "login") => {
     setAuthError("");
     const res = await fetch(`http://localhost:4000/auth/${mode}`, {
@@ -118,7 +128,15 @@ function App() {
 
   return (
     <div className="max-w-2xl mx-auto p-6">
-      <h1 className="text-3xl font-bold text-blue-600 mb-6">Codebase Q&A</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold text-blue-600">Codebase Q&A</h1>
+        <button
+          onClick={handleLogout}
+          className="text-sm text-gray-600 hover:text-red-600 border rounded px-3 py-1"
+        >
+          Logout
+        </button>
+      </div>
 
       <form onSubmit={handleAddRepo} className="flex gap-2 mb-6">
         <input
