@@ -1,5 +1,7 @@
 import { useState } from "react";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 type Message = {
   role: "user" | "assistant";
   content: string;
@@ -32,7 +34,7 @@ function App() {
 
   const handleAuth = async (mode: "signup" | "login") => {
     setAuthError("");
-    const res = await fetch(`http://localhost:4000/auth/${mode}`, {
+    const res = await fetch(`${API_URL}/auth/${mode}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
@@ -48,7 +50,7 @@ function App() {
   const handleAddRepo = async (e: React.FormEvent) => {
     e.preventDefault();
     setIngesting(true);
-    const res = await fetch("http://localhost:4000/repos", {
+    const res = await fetch(`${API_URL}/repos`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -62,7 +64,7 @@ function App() {
       return;
     }
     setRepoId(repo.id);
-    await fetch(`http://localhost:4000/repos/${repo.id}/ingest`, {
+    await fetch(`${API_URL}/repos/${repo.id}/ingest`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -79,7 +81,7 @@ function App() {
     setAsking(true);
 
     const res = await fetch(
-      `http://localhost:4000/repos/${repoId}/ask?q=${encodeURIComponent(question)}`,
+      `${API_URL}/repos/${repoId}/ask?q=${encodeURIComponent(question)}`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
     const data = await res.json();
