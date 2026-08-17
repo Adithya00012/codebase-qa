@@ -2,6 +2,8 @@
 
 Ask natural language questions about any public GitHub repository and get accurate, cited answers grounded in the actual source code.
 
+🔗 **[Live Demo](https://codebase-qa.k-adithyaadithya1432.workers.dev)**
+
 ## How it works
 
 1. **Ingest** — Clone a GitHub repo, parse source files (`.js`, `.ts`, `.py`, etc).
